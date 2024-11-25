@@ -444,6 +444,7 @@ fn parse_cia(mut romfile: File, filename: String) {
     let titkey = enckey;
 
     println!("TitleKey(decrypted): {}", hex::encode(&titkey));
+    println!("CMNKEYS[{}]: {}", cmnkeyidx, hex::encode(&CMNKEYS[cmnkeyidx as usize]));
 
     romfile.seek(SeekFrom::Start((tmdoff + 518) as u64)).unwrap();
     let mut content_count: [u8; 2] = [0; 2];
