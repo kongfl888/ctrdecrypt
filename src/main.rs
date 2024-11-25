@@ -137,12 +137,15 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
     let key_0x2c = u128::to_be_bytes(scramblekey(KEYS_0[0], keyys[0]));
     let get_crypto_key = |extra_crypto: &u8| -> usize { match extra_crypto { 0 => 0, 1 => 1, 10 => 2, 11 => 3, _ => 0 }};
 
+    println!("  {} key_0x2c: {}", sections[sec_idx], hex::encode(&key_0x2c));
+
     match sec_type {
         NcchSection::ExHeader => {
             let mut key = key_0x2c;
             if flag_to_bool(fixed_crypto) {
                 key = u128::to_be_bytes(KEYS_1[(fixed_crypto as usize)- 1]);
             }
+            println!("  {} Aes Key: {}", sections[sec_idx], hex::encode(&key));
             let mut buf = vec![0u8; size as usize];
             cia.read(&mut buf);
             Aes128Ctr::new_from_slices(&key, &ctr)
@@ -155,6 +158,7 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
             if flag_to_bool(fixed_crypto) {
                 key = u128::to_be_bytes(KEYS_1[(fixed_crypto as usize)- 1]);
             }
+            println!("  {} Aes Key: {}", sections[sec_idx], hex::encode(&key));
             let mut exedata = vec![0u8; size as usize];
             cia.read(&mut exedata);
             let mut exetmp = exedata.clone();
@@ -166,6 +170,7 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
                 let mut exetmp2 = exedata;
                 key = u128::to_be_bytes(scramblekey(KEYS_0[get_crypto_key(&uses_extra_crypto)], keyys[1]));
                 
+                println!("  {} Aes Key: {}", sections[sec_idx], hex::encode(&key));
                 Aes128Ctr::new_from_slices(&key, &ctr)
                     .unwrap()
                     .apply_keystream(&mut exetmp2);
@@ -208,6 +213,7 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
             if flag_to_bool(fixed_crypto) {
                 key = u128::to_be_bytes(KEYS_1[(fixed_crypto as usize) - 1]);
             }
+            println!("  {} Aes Key: {}", sections[sec_idx], hex::encode(&key));
             let mut sizeleft = size;
             let mut buf = vec![0u8; CHUNK as usize];
             let mut ctr_cipher = Aes128Ctr::new_from_slices(&key, &ctr).unwrap();
@@ -293,6 +299,7 @@ fn get_new_key(key_y: u128, header: &NcchHdr, titleid: String) -> u128 {
         }
     }
 
+    println!("  New Key: {:032X}", new_key);
     new_key
 }
 
@@ -431,8 +438,12 @@ fn parse_cia(mut romfile: File, filename: String) {
     let mut cmnkeyidx: u8 = 0;
     romfile.read_exact(std::slice::from_mut(&mut cmnkeyidx)).unwrap();
 
+    println!("TitleKey: {}", hex::encode(&enckey));
+
     cbc_decrypt(&CMNKEYS[cmnkeyidx as usize], &tid, &mut enckey);
     let titkey = enckey;
+
+    println!("TitleKey(decrypted): {}", hex::encode(&titkey));
 
     romfile.seek(SeekFrom::Start((tmdoff + 518) as u64)).unwrap();
     let mut content_count: [u8; 2] = [0; 2];
@@ -461,6 +472,8 @@ fn parse_cia(mut romfile: File, filename: String) {
 
         let iv: [u8; 16] = gen_iv(content.cidx);
         
+        println!("\nIV({}): {}", i, hex::encode(&iv));
+
         if cenc {
             cbc_decrypt(&titkey, &iv, &mut test);
             search = test[256..260].try_into().unwrap();
