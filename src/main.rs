@@ -497,6 +497,21 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         println!("Usage: ctrdecrypt <ROMFILE>");
+        let keyts = u128::to_be_bytes(KEY_0X2C);
+        let ivts = u128::to_be_bytes(0x00040000001399000100000000000000);
+        let mut datats1: [u8; 16] = hex!("000102030405060708090A0B0C0D0E0F");
+        let mut datats2: [u8; 16] = hex!("000102030405060708090A0B0C0D0E0F");
+        println!("\n");
+        println!("  E: {}", hex::encode(&datats1));
+        println!("key: {}", hex::encode(&keyts));
+        println!(" iv: {}", hex::encode(&ivts));
+        cbc_decrypt(&keyts, &ivts, &mut datats2);
+        println!("cbc: {}", hex::encode(&datats2));
+        Aes128Ctr::new_from_slices(&keyts, &ivts)
+                .unwrap()
+                .apply_keystream(&mut datats1);
+        println!("ctr: {}", hex::encode(&datats1));
+        println!("\n");
         return;
     } else if !Path::exists(Path::new(&args[1])) {
         println!("ROM does not exist");
