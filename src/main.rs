@@ -217,7 +217,9 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
             let mut sizeleft = size;
             let mut buf = vec![0u8; CHUNK as usize];
             let mut ctr_cipher = Aes128Ctr::new_from_slices(&key, &ctr).unwrap();
+            let mut ic = 0;
             while sizeleft > CHUNK {
+                ic += 1;
                 cia.read(&mut buf);
                 if cia.cidx > 0 && !(cia.single_ncch || cia.from_ncsd) { buf[1] = buf[1] ^ cia.cidx as u8 }
                 ctr_cipher.apply_keystream(&mut buf);
@@ -226,12 +228,14 @@ fn dump_section(ncch: &mut File, cia: &mut CiaReader, offset: u64, size: u32, se
             }
 
             if sizeleft > 0 {
+                ic += 1;
                 buf = vec![0u8; sizeleft as usize];
                 cia.read(&mut buf);
                 if cia.cidx > 0 && !(cia.single_ncch || cia.from_ncsd) { buf[1] = buf[1] ^ cia.cidx as u8 }
                 ctr_cipher.apply_keystream(&mut buf);
                 ncch.write_all(&buf).unwrap();
             }
+            println!("  {} Decrypted {} chunks", sections[sec_idx], ic);
         }
     }
 }
